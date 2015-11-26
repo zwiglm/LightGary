@@ -19,9 +19,9 @@ void loop () {
 
     long metalRead = metalEncoder.read();
     
-    if (digitalRead(MetalSwitch)) {  // check if pushbutton is pressed
+    if (!digitalRead(MetalSwitch)) {  // check if pushbutton is pressed
       metalEncoder.write(0);    
-      while (digitalRead(MetalSwitch)) {} 
+      while (!digitalRead(MetalSwitch)) {} 
       Serial.println("Reset to zero");
     }
     
