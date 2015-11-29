@@ -1,11 +1,14 @@
+#include <PinChangeInt.h>
 #include <Encoder.h>
 
-const int _metalCLK = 2; // Used for generating interrupts using CLK signal
-const int _metalDT = 4; // Used for reading DT signal
 const int _metalSwitch = 8; // Used for the push button switch
 
+const int _metalIRQ = 0;
+const int _metalCLK = 2; // Used for generating interrupts using CLK signal
+const int _metalDT = 4; // Used for reading DT signal
+
 Encoder metalEncoder(_metalCLK, _metalDT);
-long metalPosition = 0;
+volatile int  metalPosition = 0;
 
 //-----------------------------------
 #define SHIFTPWM_USE_TIMER2  // for Arduino Uno and earlier (Atmega328)
@@ -24,7 +27,7 @@ const bool ShiftPWM_balanceLoad = false;
 
 #include <ShiftPWM.h>   // include ShiftPWM.h after setting the pins!
 
-unsigned char maxBrightness = 255;
+unsigned char maxBrightness = 50; //255
 unsigned char pwmFrequency = 75;
 int numRegisters = 1;
 int numRGBleds = 1;
@@ -33,7 +36,12 @@ int numRGBleds = 1;
 // ---------------------------------
 void setup () {
   pinMode(_metalSwitch, INPUT);
+  attachPinChangeInterrupt(_metalSwitch, metalSwitchWakeup, RISING);
 
+  pinMode(_metalCLK, INPUT);
+  pinMode(_metalDT, INPUT); 
+  attachInterrupt(_metalIRQ, metalEncWakeup, CHANGE);
+  
   // Sets the number of 8-bit registers that are used.
   ShiftPWM.SetAmountOfRegisters(numRegisters);
   // SetPinGrouping allows flexibility in LED setup. 
@@ -47,39 +55,84 @@ void setup () {
 
 void loop () {
 
-    // Turn all LED's off.
-    ShiftPWM.SetAll(0);
-  
-    // Print information about the interrupt frequency, duration and load on your program
-    ShiftPWM.PrintInterruptLoad();
-  
-    // Fade in and fade out all outputs one by one fast. Usefull for testing your hardware. Use OneByOneSlow when this is going to fast.
-    ShiftPWM.OneByOneFast();
-  
-    // Fade in all outputs
-    for(int j=0;j<maxBrightness;j++){
-      ShiftPWM.SetAll(j);  
-      delay(20);
-    }
-    // Fade out all outputs
-    for(int j=maxBrightness;j>=0;j--){
-      ShiftPWM.SetAll(j);  
-      delay(20);
-    }
+//    // Turn all LED's off.
+//    ShiftPWM.SetAll(0);
+//  
+//    // Print information about the interrupt frequency, duration and load on your program
+////    ShiftPWM.PrintInterruptLoad();
+//  
+//    // Fade in and fade out all outputs one by one fast. Usefull for testing your hardware. Use OneByOneSlow when this is going to fast.
+//    ShiftPWM.OneByOneFast();
+//  
+//    // Fade in all outputs
+//    for(int j=0;j<maxBrightness;j++){
+//      ShiftPWM.SetAll(j);  
+//      delay(20);
+//    }
+//    // Fade out all outputs
+//    for(int j=maxBrightness;j>=0;j--){
+//      ShiftPWM.SetAll(j);  
+//      delay(20);
+//    }
 
-
-    long metalRead = metalEncoder.read();
-    
-    if (!digitalRead(_metalSwitch)) {  // check if pushbutton is pressed
-      metalEncoder.write(0);    
-      while (!digitalRead(_metalSwitch)) {} 
-      Serial.println("Reset to zero");
-    }
-    
-    if (metalPosition != metalRead) {
-      metalPosition = metalRead;
-      Serial.print("Metal count: ");
-      Serial.println(metalPosition);
-    }
-  
+    int lastCount = 0;
+    while (true) {
+        if (metalPosition != lastCount) {
+        lastCount = metalPosition;
+        Serial.print("Count:");
+        Serial.println(metalPosition);
+        }
+    } // while  
 }
+
+
+// ---------------------------------
+void metalSwitchWakeup() {
+  detachPinChangeInterrupt(_metalSwitch);
+  metalPosition = 0;    
+  attachPinChangeInterrupt(_metalSwitch, metalEncWakeup, FALLING);
+}
+
+void metalEncWakeup() {
+  detachInterrupt(_metalIRQ);
+  
+    /* If pinA and pinB are both high or both low, it is spinning
+     * forward. If they're different, it's going backward.
+     *
+     * For more information on speeding up this process, see
+     * [Reference/PortManipulation], specifically the PIND register.
+     */
+    if (digitalRead(_metalCLK) == digitalRead(_metalDT)) {
+      metalPosition--;
+    } else {
+      metalPosition++;
+    }
+  
+  attachInterrupt(_metalIRQ, metalEncWakeup, CHANGE);
+}
+
+void metalEncWakeup_Expanded(){
+  if (digitalRead(_metalCLK) == HIGH) {   // found a low-to-high on channel A
+    if (digitalRead(_metalDT) == LOW) {  // check channel B to see which way
+                                             // encoder is turning
+      metalPosition = metalPosition - 1;         // CCW
+    } 
+    else {
+      metalPosition = metalPosition + 1;         // CW
+    }
+  }
+  else                                        // found a high-to-low on channel A
+  { 
+    if (digitalRead(_metalDT) == LOW) {   // check channel B to see which way
+                                              // encoder is turning  
+      metalPosition = metalPosition + 1;          // CW
+    } 
+    else {
+      metalPosition = metalPosition - 1;          // CCW
+    }
+
+  }
+}
+
+
+
