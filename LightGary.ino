@@ -6,9 +6,14 @@ const int _metalSwitch = 8; // Used for the push button switch
 const int _metalIRQ = 0;
 const int _metalCLK = 2; // Used for generating interrupts using CLK signal
 const int _metalDT = 4; // Used for reading DT signal
+const int _rgbReIRQ = 1;
+const int _rgbReCLK = 3; // Used for generating interrupts using CLK signal
+const int _rgbReDT = 6; // Used for reading DT signal
 
 Encoder metalEncoder(_metalCLK, _metalDT);
+Encoder rgbEncoder(_rgbReCLK, _rgbReDT);
 volatile int  metalPosition = 0;
+volatile int  rgbPosition = 0;
 
 //-----------------------------------
 #define SHIFTPWM_USE_TIMER2  // for Arduino Uno and earlier (Atmega328)
@@ -41,6 +46,9 @@ void setup () {
   pinMode(_metalCLK, INPUT);
   pinMode(_metalDT, INPUT); 
   attachInterrupt(_metalIRQ, metalEncWakeup, CHANGE);
+  pinMode(_rgbReCLK, INPUT);
+  pinMode(_rgbReDT, INPUT); 
+  attachInterrupt(_rgbReIRQ, rgbEncWakeup, CHANGE);
   
   // Sets the number of 8-bit registers that are used.
   ShiftPWM.SetAmountOfRegisters(numRegisters);
@@ -75,12 +83,18 @@ void loop () {
 //      delay(20);
 //    }
 
-    int lastCount = 0;
+    int lastMetalCount = 0;
+    int lastRgbCount = 0;
     while (true) {
-        if (metalPosition != lastCount) {
-        lastCount = metalPosition;
-        Serial.print("Count:");
-        Serial.println(metalPosition);
+        if (metalPosition != lastMetalCount) {
+          lastMetalCount = metalPosition;
+          Serial.print("Count metal:");
+          Serial.println(metalPosition);
+        }
+        if (rgbPosition != lastRgbCount) {
+          lastRgbCount = rgbPosition;
+          Serial.print("Count RGB:");
+          Serial.println(rgbPosition);
         }
     } // while  
 }
@@ -111,28 +125,45 @@ void metalEncWakeup() {
   attachInterrupt(_metalIRQ, metalEncWakeup, CHANGE);
 }
 
-void metalEncWakeup_Expanded(){
-  if (digitalRead(_metalCLK) == HIGH) {   // found a low-to-high on channel A
-    if (digitalRead(_metalDT) == LOW) {  // check channel B to see which way
-                                             // encoder is turning
-      metalPosition = metalPosition - 1;         // CCW
-    } 
-    else {
-      metalPosition = metalPosition + 1;         // CW
+void rgbEncWakeup() {
+  detachInterrupt(_rgbReIRQ);
+  
+    if (digitalRead(_rgbReCLK) == digitalRead(_rgbReDT)) {
+      rgbPosition--;
+    } else {
+      rgbPosition++;
     }
-  }
-  else                                        // found a high-to-low on channel A
-  { 
-    if (digitalRead(_metalDT) == LOW) {   // check channel B to see which way
-                                              // encoder is turning  
-      metalPosition = metalPosition + 1;          // CW
-    } 
-    else {
-      metalPosition = metalPosition - 1;          // CCW
-    }
-
-  }
+  
+  attachInterrupt(_rgbReIRQ, rgbEncWakeup, CHANGE);
 }
+
+
+
+
+// ---------------------------------
+
+//void metalEncWakeup_Expanded(){
+//  if (digitalRead(_metalCLK) == HIGH) {   // found a low-to-high on channel A
+//    if (digitalRead(_metalDT) == LOW) {  // check channel B to see which way
+//                                             // encoder is turning
+//      metalPosition = metalPosition - 1;         // CCW
+//    } 
+//    else {
+//      metalPosition = metalPosition + 1;         // CW
+//    }
+//  }
+//  else                                        // found a high-to-low on channel A
+//  { 
+//    if (digitalRead(_metalDT) == LOW) {   // check channel B to see which way
+//                                              // encoder is turning  
+//      metalPosition = metalPosition + 1;          // CW
+//    } 
+//    else {
+//      metalPosition = metalPosition - 1;          // CCW
+//    }
+//
+//  }
+//}
 
 
 
