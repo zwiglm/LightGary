@@ -1,7 +1,9 @@
 #include <PinChangeInt.h>
 #include <Encoder.h>
 
+//-----------------------------------
 const int _metalSwitch = 8; // Used for the push button switch
+const int _rgbReSwitch = 9;
 
 const int _metalIRQ = 0;
 const int _metalCLK = 2; // Used for generating interrupts using CLK signal
@@ -35,13 +37,15 @@ const bool ShiftPWM_balanceLoad = false;
 unsigned char maxBrightness = 50; //255
 unsigned char pwmFrequency = 75;
 int numRegisters = 1;
-int numRGBleds = 1;
+int numRGBleds = 2;
 
 
 // ---------------------------------
 void setup () {
   pinMode(_metalSwitch, INPUT);
   attachPinChangeInterrupt(_metalSwitch, metalSwitchWakeup, RISING);
+  pinMode(_rgbReSwitch, INPUT);
+  attachPinChangeInterrupt(_rgbReSwitch, rgbReSwitchWakeup, FALLING);
 
   pinMode(_metalCLK, INPUT);
   pinMode(_metalDT, INPUT); 
@@ -63,15 +67,16 @@ void setup () {
 
 void loop () {
 
-//    // Turn all LED's off.
-//    ShiftPWM.SetAll(0);
-//  
-//    // Print information about the interrupt frequency, duration and load on your program
-////    ShiftPWM.PrintInterruptLoad();
-//  
-//    // Fade in and fade out all outputs one by one fast. Usefull for testing your hardware. Use OneByOneSlow when this is going to fast.
-//    ShiftPWM.OneByOneFast();
-//  
+    // Turn all LED's off.
+//    ShiftPWM.SetRGB(0, 0, 0, 0);
+    ShiftPWM.SetRGB(1, 255, 255, 255);
+  
+    // Print information about the interrupt frequency, duration and load on your program
+//    ShiftPWM.PrintInterruptLoad();
+  
+    // Fade in and fade out all outputs one by one fast. Usefull for testing your hardware. Use OneByOneSlow when this is going to fast.
+//    ShiftPWM.OneByOneSlow();
+  
 //    // Fade in all outputs
 //    for(int j=0;j<maxBrightness;j++){
 //      ShiftPWM.SetAll(j);  
@@ -104,7 +109,13 @@ void loop () {
 void metalSwitchWakeup() {
   detachPinChangeInterrupt(_metalSwitch);
   metalPosition = 0;    
-  attachPinChangeInterrupt(_metalSwitch, metalEncWakeup, FALLING);
+  attachPinChangeInterrupt(_metalSwitch, metalSwitchWakeup, RISING);
+}
+
+void rgbReSwitchWakeup() {
+  detachPinChangeInterrupt(_rgbReSwitch);
+  rgbPosition = 0;    
+  attachPinChangeInterrupt(_rgbReSwitch, rgbReSwitchWakeup, FALLING);
 }
 
 void metalEncWakeup() {
