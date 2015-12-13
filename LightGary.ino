@@ -25,7 +25,7 @@ const int ShiftPWM_dataPin = 11;
 const int ShiftPWM_clockPin = 13;
 
 // If your LED's turn on if the pin is low, set this to true, otherwise set it to false.
-const bool ShiftPWM_invertOutputs = false; 
+const bool ShiftPWM_invertOutputs = true; 
 
 // You can enable the option below to shift the PWM phase of each shift register by 8 compared to the previous.
 // This will slightly increase the interrupt load, but will prevent all PWM signals from becoming high at the same time.
@@ -68,15 +68,15 @@ void setup () {
 void loop () {
 
     // Turn all LED's off.
-//    ShiftPWM.SetRGB(0, 0, 0, 0);
-    ShiftPWM.SetRGB(1, 255, 255, 255);
-  
+    ShiftPWM.SetAll(0);  
     // Print information about the interrupt frequency, duration and load on your program
-//    ShiftPWM.PrintInterruptLoad();
-  
+//    ShiftPWM.PrintInterruptLoad();  
     // Fade in and fade out all outputs one by one fast. Usefull for testing your hardware. Use OneByOneSlow when this is going to fast.
 //    ShiftPWM.OneByOneSlow();
-  
+
+
+    ShiftPWM.SetRGB(0, 0, 0, 255);
+    ShiftPWM.SetRGB(1, 0, 255, 0);
 //    // Fade in all outputs
 //    for(int j=0;j<maxBrightness;j++){
 //      ShiftPWM.SetAll(j);  
@@ -88,20 +88,20 @@ void loop () {
 //      delay(20);
 //    }
 
-    int lastMetalCount = 0;
-    int lastRgbCount = 0;
-    while (true) {
-        if (metalPosition != lastMetalCount) {
-          lastMetalCount = metalPosition;
-          Serial.print("Count metal:");
-          Serial.println(metalPosition);
-        }
-        if (rgbPosition != lastRgbCount) {
-          lastRgbCount = rgbPosition;
-          Serial.print("Count RGB:");
-          Serial.println(rgbPosition);
-        }
-    } // while  
+//    int lastMetalCount = 0;
+//    int lastRgbCount = 0;
+//    while (true) {
+//        if (metalPosition != lastMetalCount) {
+//          lastMetalCount = metalPosition;
+//          Serial.print("Count metal:");
+//          Serial.println(metalPosition);
+//        }
+//        if (rgbPosition != lastRgbCount) {
+//          lastRgbCount = rgbPosition;
+//          Serial.print("Count RGB:");
+//          Serial.println(rgbPosition);
+//        }
+//    } // while  
 }
 
 
