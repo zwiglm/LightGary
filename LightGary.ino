@@ -1,5 +1,10 @@
+#include <Wire.h>
+#include <RTClib.h>
 #include <PinChangeInt.h>
 #include <Encoder.h>
+
+//-----------------------------------
+RTC_DS1307 _rtc;
 
 //-----------------------------------
 const int _metalSwitch = 8; // Used for the push button switch
@@ -42,6 +47,16 @@ int numRGBleds = 2;
 
 // ---------------------------------
 void setup () {
+  Serial.begin (9600);
+  Serial.println("START");
+
+  Wire.begin();
+  _rtc.begin();
+  if (!_rtc.isrunning()) {
+    Serial.println("RTC is NOT running");
+    _rtc.adjust(DateTime(__DATE__, __TIME__));
+  }
+  
   pinMode(_metalSwitch, INPUT);
   attachPinChangeInterrupt(_metalSwitch, metalSwitchWakeup, RISING);
   pinMode(_rgbReSwitch, INPUT);
@@ -60,13 +75,18 @@ void setup () {
   // If your LED's are connected like this: RRRRGGGGBBBBRRRRGGGGBBBB, use SetPinGrouping(4).
   ShiftPWM.SetPinGrouping(1); //This is the default, but I added here to demonstrate how to use the funtion  
   ShiftPWM.Start(pwmFrequency, maxBrightness);
-
-  Serial.begin (9600);
-  Serial.println("START");
 }
 
 void loop () {
-
+    // Time
+    DateTime now = _rtc.now();
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(now.second(), DEC);
+    Serial.println();
+    
     // Turn all LED's off.
     ShiftPWM.SetAll(0);  
     // Print information about the interrupt frequency, duration and load on your program
