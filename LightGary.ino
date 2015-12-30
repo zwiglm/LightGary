@@ -5,6 +5,9 @@
 
 //-----------------------------------
 RTC_DS1307 _rtc;
+const int _sSegLatch = A2;
+const int _sSegClock = A1;
+const int _sSegData = A3;
 
 //-----------------------------------
 const int _metalSwitch = 8; // Used for the push button switch
@@ -50,13 +53,20 @@ void setup () {
   Serial.begin (9600);
   Serial.println("START");
 
+  // RTC
   Wire.begin();
   _rtc.begin();
   if (!_rtc.isrunning()) {
     Serial.println("RTC is NOT running");
     _rtc.adjust(DateTime(__DATE__, __TIME__));
   }
-  
+
+  // 7 - Segment
+  pinMode(_sSegLatch, OUTPUT);
+  pinMode(_sSegData, OUTPUT);
+  pinMode(_sSegClock, OUTPUT);
+
+  // Rotary Encoders
   pinMode(_metalSwitch, INPUT);
   attachPinChangeInterrupt(_metalSwitch, metalSwitchWakeup, RISING);
   pinMode(_rgbReSwitch, INPUT);
@@ -68,7 +78,8 @@ void setup () {
   pinMode(_rgbReCLK, INPUT);
   pinMode(_rgbReDT, INPUT); 
   attachInterrupt(_rgbReIRQ, rgbEncWakeup, CHANGE);
-  
+
+  // FIRST Shift-Register
   // Sets the number of 8-bit registers that are used.
   ShiftPWM.SetAmountOfRegisters(numRegisters);
   // SetPinGrouping allows flexibility in LED setup. 
@@ -86,6 +97,15 @@ void loop () {
     Serial.print(':');
     Serial.print(now.second(), DEC);
     Serial.println();
+
+    byte segTest1 = B01101100; // 1 .. 8 -> 5 turns on doppel-punkt; 7 & 8 most front dots; 2-> 1st dig, 3-> 2nd dig; 4 -> 4th dig; 6 -> 3rd dig
+    byte segTest2 = B10000001; // 9 .. 16
+    writeSevenSegment(segTest1, segTest2);
+    delay(10);
+    segTest1 = B01111000; 
+    segTest2 = B01000001; 
+    writeSevenSegment(segTest1, segTest2);
+    delay(10);
     
     // Turn all LED's off.
     ShiftPWM.SetAll(0);  
@@ -122,6 +142,22 @@ void loop () {
 //          Serial.println(rgbPosition);
 //        }
 //    } // while  
+}
+
+
+// ---------------------------------
+void writeSevenSegment(byte stShift, byte ndShift)
+{
+// turn off the output so the pins don't light up
+// while you're shifting bits:
+digitalWrite(_sSegLatch, LOW);
+
+// shift the bits out:
+shiftOut(_sSegData, _sSegClock, LSBFIRST, ndShift);
+shiftOut(_sSegData, _sSegClock, LSBFIRST, stShift);
+
+// turn on the output so the LEDs can light up:
+digitalWrite(_sSegLatch, HIGH);
 }
 
 
