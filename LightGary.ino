@@ -9,6 +9,8 @@ const int _sSegLatch = A2;
 const int _sSegClock = A1;
 const int _sSegData = A3;
 
+byte _sSegDigits[10] = { B11111010, B00110000, B11011100, B01111100, B10000000, B10000000, B10000000, B10000000, B10000000, B10000000 };
+ 
 //-----------------------------------
 const int _metalSwitch = 8; // Used for the push button switch
 const int _rgbReSwitch = 9;
@@ -98,12 +100,12 @@ void loop () {
     Serial.print(now.second(), DEC);
     Serial.println();
 
-    byte segTest1 = B01101100; // 1 .. 8 -> 5 turns on doppel-punkt; 7 & 8 most front dots; 2-> 1st dig, 3-> 2nd dig; 4 -> 4th dig; 6 -> 3rd dig
-    byte segTest2 = B10000001; // 9 .. 16
+    byte segTest1 = B01110100; // 1 .. 8 -> 6 turns on doppel-punkt; 7 & 8 most front dots; 2-> 1st dig, 3-> 2nd dig; 4 -> 4th dig; 6 -> 3rd dig
+    byte segTest2 = B11111010; // 9 .. 16
     writeSevenSegment(segTest1, segTest2);
     delay(10);
-    segTest1 = B01111000; 
-    segTest2 = B01000001; 
+    segTest1 = B01101100; 
+    segTest2 = B01111100; 
     writeSevenSegment(segTest1, segTest2);
     delay(10);
     
