@@ -9,7 +9,8 @@ const int _sSegLatch = A2;
 const int _sSegClock = A1;
 const int _sSegData = A3;
 
-byte _sSegDigits[10] = { B11111010, B00110000, B11011100, B01111100, B10000000, B10000000, B10000000, B10000000, B10000000, B10000000 };
+byte _sSegControl[5] = { B11111000, B00111100, B01011100, B01101100, B01110100 };  // 1 .. 8 -> 6 LED for doppel-punkt; 7 & 8 most front dots; 1 -> doppel-Punkt; 2-> 1st dig, 3-> 2nd dig; 4 -> 4th dig; 6 -> 3rd dig
+byte _sSegDigits[10] = { B11111010, B00110000, B11011100, B01111100, B00110110, B01101110, B11101110, B00111000, B11111110, B01111110 };
  
 //-----------------------------------
 const int _metalSwitch = 8; // Used for the push button switch
@@ -92,22 +93,7 @@ void setup () {
 
 void loop () {
     // Time
-    DateTime now = _rtc.now();
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.print(':');
-    Serial.print(now.second(), DEC);
-    Serial.println();
-
-    byte segTest1 = B01110100; // 1 .. 8 -> 6 turns on doppel-punkt; 7 & 8 most front dots; 2-> 1st dig, 3-> 2nd dig; 4 -> 4th dig; 6 -> 3rd dig
-    byte segTest2 = B11111010; // 9 .. 16
-    writeSevenSegment(segTest1, segTest2);
-    delay(10);
-    segTest1 = B01101100; 
-    segTest2 = B01111100; 
-    writeSevenSegment(segTest1, segTest2);
-    delay(10);
+    showTimeOn7Seg();
     
     // Turn all LED's off.
     ShiftPWM.SetAll(0);  
@@ -148,18 +134,48 @@ void loop () {
 
 
 // ---------------------------------
+void showTimeOn7Seg() {
+  DateTime now = _rtc.now();
+  uint8_t lHour = now.hour();
+  uint8_t lMin = now.minute();
+
+//  Serial.print(lHour, DEC);
+//  Serial.print(':');
+//  Serial.print(lMin, DEC);
+//  Serial.print(':');
+//  Serial.print(now.second(), DEC);
+//  Serial.println();
+
+  // last part of min
+  uint8_t digit = lMin % 10;
+  writeSevenSegment(_sSegControl[4], _sSegDigits[digit]);
+  delay(3);
+  // first part of min
+  digit = lMin / 10;
+  writeSevenSegment(_sSegControl[3], _sSegDigits[digit]);
+  delay(3);
+
+  // last part of hour
+  digit = lHour % 10;
+  writeSevenSegment(_sSegControl[2], _sSegDigits[digit]);
+  delay(3);
+  // firstr part of hour
+  digit = lHour / 10;
+  writeSevenSegment(_sSegControl[1], _sSegDigits[digit]);
+  delay(3);
+}
 void writeSevenSegment(byte stShift, byte ndShift)
 {
-// turn off the output so the pins don't light up
-// while you're shifting bits:
-digitalWrite(_sSegLatch, LOW);
-
-// shift the bits out:
-shiftOut(_sSegData, _sSegClock, LSBFIRST, ndShift);
-shiftOut(_sSegData, _sSegClock, LSBFIRST, stShift);
-
-// turn on the output so the LEDs can light up:
-digitalWrite(_sSegLatch, HIGH);
+  // turn off the output so the pins don't light up
+  // while you're shifting bits:
+  digitalWrite(_sSegLatch, LOW);
+  
+  // shift the bits out:
+  shiftOut(_sSegData, _sSegClock, LSBFIRST, ndShift);
+  shiftOut(_sSegData, _sSegClock, LSBFIRST, stShift);
+  
+  // turn on the output so the LEDs can light up:
+  digitalWrite(_sSegLatch, HIGH);
 }
 
 
