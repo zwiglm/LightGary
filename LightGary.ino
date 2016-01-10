@@ -2,6 +2,11 @@
 #include <RTClib.h>
 #include <PinChangeInt.h>
 #include <Encoder.h>
+#include <Adafruit_NeoPixel.h>
+
+//-----------------------------------
+#define NP_PIN A0
+Adafruit_NeoPixel _npRing = Adafruit_NeoPixel(24, NP_PIN, NEO_GRB + NEO_KHZ800);
 
 //-----------------------------------
 RTC_DS1307 _rtc;
@@ -64,6 +69,10 @@ void setup () {
     _rtc.adjust(DateTime(__DATE__, __TIME__));
   }
 
+  // NeoPixel Ring
+  _npRing.begin();
+  _npRing.show(); // Initialize all pixels to 'off'
+  
   // 7 - Segment
   pinMode(_sSegLatch, OUTPUT);
   pinMode(_sSegData, OUTPUT);
@@ -94,7 +103,12 @@ void setup () {
 void loop () {
     // Time
     showTimeOn7Seg();
-    
+
+    // NP Ring test
+//    colorWipe(_npRing.Color(255, 0, 0), 50); // Red
+//    colorWipe(_npRing.Color(0, 255, 0), 50); // Green
+//    colorWipe(_npRing.Color(0, 0, 255), 50); // Blue
+
     // Turn all LED's off.
     ShiftPWM.SetAll(0);  
     // Print information about the interrupt frequency, duration and load on your program
@@ -132,6 +146,16 @@ void loop () {
 //    } // while  
 }
 
+
+// ---------------------------------
+// Fill the dots one after the other with a color
+void colorWipe(uint32_t c, uint8_t wait) {
+  for(uint16_t i=0; i < _npRing.numPixels(); i++) {
+    _npRing.setPixelColor(i, c);
+    _npRing.show();
+    delay(wait);
+  }
+}
 
 // ---------------------------------
 void showTimeOn7Seg() {
