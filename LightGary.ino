@@ -38,12 +38,9 @@ volatile int  _metalPosition = 0;
 volatile int  _rgbPosition = 0;
 
 volatile int _metalButton = 0;
-const int _maxMetalButton = 3;
 volatile int _rgbButton = 0;
-const int _maxRgbButton = 8;
-
-uint32_t _aRgbButton[_maxRgbButton] = { 1, 2, 4, 8, 16, 32, 64, 128 };
-uint32_t _aMetalButton[_maxMetalButton] = { 1024, 2048, 4096 };
+uint32_t _aRgbButton[] = { 1, 2 };
+uint32_t _aMetalButton[] = { 1024, 2048 };
 
 //-----------------------------------
 // Setup for ShiftRegister PWM-Lib
@@ -68,7 +65,15 @@ unsigned char pwmFrequency = 75;
 int numRegisters = 1;
 int numRGBleds = 2;
 
+//-----------------------------------
+// Do the unrelated stuff here
+// --
+volatile bool _getSegTimeKeeper = false;
+DateTime _segTimeKeeper;
 
+
+// ---------------------------------
+// MAIN Funcs - MAIN Funcs
 // ---------------------------------
 void setup () {
     Serial.begin (9600);
@@ -136,21 +141,35 @@ void setup () {
 }
 
 void loop () {
+    // get new time
+    DateTime now = _rtc.now();
 
-    uint32_t buttonValue = _aRgbButton[_rgbButton] + _aMetalButton[_metalButton];
-    Serial.print("Button-Types:");
-    Serial.println(buttonValue);
-    switch(buttonValue){
-        case 2049: 
-          // Time
-          showTimeOn7Seg();
-          break;
-          
+    Serial.print("Metal:");
+    Serial.println(_aMetalButton[_metalButton]);
+    switch(_aMetalButton[_metalButton]){
+        case 2048: {
+          showTimeForSecs(15, now);
+        }
+        break;
+
         default:
-          clearAll();
-          break;
+          clearMetal();
+        break;
     }
-      
+
+    Serial.print("RGB:");
+    Serial.println(_aRgbButton[_rgbButton]);
+    switch(_aRgbButton[_rgbButton]){
+        case 2: {
+          ShiftPWM.SetRGB(1, 0, 255, 0);
+        }
+        break;
+
+        default:
+          clearRGB();
+        break;
+    }
+    
 //    // Fade in all outputs
 //    for(int j=0;j<maxBrightness;j++){
 //      ShiftPWM.SetAll(j);  
@@ -180,10 +199,32 @@ void loop () {
 
 
 // ---------------------------------
-void clearAll() {
-    clear7Seg();
+// HIGHER level Funcs
+// ---------------------------------
+void showTimeForSecs(int secs, DateTime currNow) {
+    if (_getSegTimeKeeper) {
+      _segTimeKeeper = _rtc.now();
+      _getSegTimeKeeper = false;
+    }
+    
+    TimeSpan segPassed = currNow - _segTimeKeeper;
+    if (segPassed.seconds() <= 15) {
+      showTimeOn7Seg(currNow.hour(), currNow.minute());
+    } else {
+       _metalButton = 0;
+    }
 }
 
+void clearMetal() {
+    clear7Seg();
+}
+void clearRGB() {
+    ShiftPWM.SetAll(0);
+}
+
+
+// ---------------------------------
+// DON'T Know....
 // ---------------------------------
 // Fill the dots one after the other with a color
 void neoColorWipe(uint32_t c, uint8_t wait) {
@@ -201,12 +242,11 @@ void neoClearAll() {
   _npRing.show();
 }
 
-// ---------------------------------
-void showTimeOn7Seg() {
-  DateTime now = _rtc.now();
-  uint8_t lHour = now.hour();
-  uint8_t lMin = now.minute();
 
+// ---------------------------------
+// LOWER level Funcs
+// ---------------------------------
+void showTimeOn7Seg(uint8_t lHour, uint8_t lMin) {
 //  Serial.print(lHour, DEC);
 //  Serial.print(':');
 //  Serial.print(lMin, DEC);
@@ -250,15 +290,18 @@ void writeSevenSegment(byte stShift, byte ndShift)
   digitalWrite(_sSegLatch, HIGH);
 }
 
-
 // ---------------------------------
 void metalSwitchWakeup() {
   detachPinChangeInterrupt(_metalSwitch);
   
   _metalPosition = 0;
   _metalButton++;
-  if (_metalButton > _maxMetalButton - 1)
+  int mbSize = sizeof(_aMetalButton)/sizeof(uint32_t);
+  if (_metalButton > mbSize - 1)
     _metalButton = 0;
+
+  if (_aMetalButton[_metalButton] == 2048)
+    _getSegTimeKeeper = true;
   
   attachPinChangeInterrupt(_metalSwitch, metalSwitchWakeup, RISING);
 }
@@ -268,7 +311,8 @@ void rgbReSwitchWakeup() {
 
   _rgbPosition = 0;
   _rgbButton++;
-  if (_rgbButton > _maxRgbButton - 1)
+  int rgbSize = sizeof(_aRgbButton)/sizeof(uint32_t);
+  if (_rgbButton > rgbSize - 1)
     _rgbButton = 0;
   
   attachPinChangeInterrupt(_rgbReSwitch, rgbReSwitchWakeup, FALLING);
