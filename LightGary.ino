@@ -9,6 +9,8 @@
 #define NP_PIN A0
 Adafruit_NeoPixel _npRing = Adafruit_NeoPixel(24, NP_PIN, NEO_GRB + NEO_KHZ800);
 
+unsigned long _npPrevMillis = 0;
+
 //-----------------------------------
 // RealTimeClock
 RTC_DS1307 _rtc;
@@ -18,6 +20,9 @@ const int _sSegData = A3;
 
 byte _sSegControl[5] = { B11111000, B00111100, B01011100, B01101100, B01110100 };  // 1 .. 8 -> 6 LED for doppel-punkt; 7 & 8 most front dots; 1 -> doppel-Punkt; 2-> 1st dig, 3-> 2nd dig; 4 -> 4th dig; 6 -> 3rd dig
 byte _sSegDigits[10] = { B11111010, B00110000, B11011100, B01111100, B00110110, B01101110, B11101110, B00111000, B11111110, B01111110 };
+
+volatile bool _getSegTimeKeeper = false;
+DateTime _segTimeKeeper;
 
 //-----------------------------------
 // Rotary Encoders with Button
@@ -39,7 +44,7 @@ volatile int  _rgbPosition = 0;
 
 volatile int _metalButton = 0;
 volatile int _rgbButton = 0;
-uint32_t _aRgbButton[] = { 1, 2 };
+uint32_t _aRgbButton[] = { 1, 2, 4, 8 };
 uint32_t _aMetalButton[] = { 1024, 2048 };
 
 //-----------------------------------
@@ -68,8 +73,6 @@ int numRGBleds = 2;
 //-----------------------------------
 // Do the unrelated stuff here
 // --
-volatile bool _getSegTimeKeeper = false;
-DateTime _segTimeKeeper;
 
 
 // ---------------------------------
@@ -131,18 +134,16 @@ void setup () {
 //    ShiftPWM.PrintInterruptLoad();  
 //    // Fade in and fade out all outputs one by one fast. Usefull for testing your hardware. Use OneByOneSlow when this is going to fast.
 //    ShiftPWM.OneByOneSlow();
-//
-//    ShiftPWM.SetRGB(0, 0, 0, 255);
-//    ShiftPWM.SetRGB(1, 0, 255, 0);
-//    delay(1000);
-//    ShiftPWM.SetAll(0);  
 
-    clear7Seg();
+    _metalButton = 0;
+    _rgbButton = 0;
+    clearAll();  
 }
 
 void loop () {
     // get new time
     DateTime now = _rtc.now();
+    unsigned long nowMillis = millis();
 
     Serial.print("Metal:");
     Serial.println(_aMetalButton[_metalButton]);
@@ -161,26 +162,36 @@ void loop () {
     Serial.println(_aRgbButton[_rgbButton]);
     switch(_aRgbButton[_rgbButton]){
         case 2: {
+          ShiftPWM.SetRGB(1, 255, 255, 255);
+          ShiftPWM.SetRGB(0, 255, 255, 255);
+        }
+        break;
+        case 4: {
           ShiftPWM.SetRGB(1, 0, 255, 0);
+          clearLamp();
+          //neoColorWipe(_npRing.Color(0, 255, 0), 50); // Green
+
+          if (nowMillis - _npPrevMillis >= 50) {
+            _npPrevMillis = nowMillis;
+            rainbow(20);
+          } else {
+            _npPrevMillis = 0;
+          }
+        }
+        break;
+        case 8: {
+          ShiftPWM.SetRGB(1, 255, 0, 255);
+          ShiftPWM.SetRGB(0, 255, 255, 255);
         }
         break;
 
         default:
           clearRGB();
+          clearLamp();
+          clearNeoPixels();
         break;
     }
     
-//    // Fade in all outputs
-//    for(int j=0;j<maxBrightness;j++){
-//      ShiftPWM.SetAll(j);  
-//      delay(20);
-//    }
-//    // Fade out all outputs
-//    for(int j=maxBrightness;j>=0;j--){
-//      ShiftPWM.SetAll(j);  
-//      delay(20);
-//    }
-
 //    int lastMetalCount = 0;
 //    int lastRgbCount = 0;
 //    while (true) {
@@ -219,9 +230,23 @@ void clearMetal() {
     clear7Seg();
 }
 void clearRGB() {
-    ShiftPWM.SetAll(0);
+    ShiftPWM.SetRGB(1, 0, 0 ,0);
 }
 
+void clearLamp() {
+  ShiftPWM.SetRGB(0, 0, 0 ,0);
+}
+
+void clearNeoPixels() {
+  neoClearAll();
+}
+
+void clearAll() {
+  clearMetal();
+  clearRGB();
+  clearLamp();
+  clearNeoPixels();
+}
 
 // ---------------------------------
 // DON'T Know....
@@ -242,6 +267,37 @@ void neoClearAll() {
   _npRing.show();
 }
 
+struct RainbowStruct
+{
+  uint16_t i;
+  uint16_t j;
+};
+struct RainbowStruct rainbow_s;
+void rainbow(uint8_t wait) {
+  rainbow_s.i++;
+  if (rainbow_s.i == 24) {
+    rainbow_s.i=0;
+    rainbow_s.j++;
+    if (rainbow_s.j == 256)
+      rainbow_s.j=0;
+  }
+  _npRing.setPixelColor(rainbow_s.i, Wheel((rainbow_s.i+rainbow_s.j) & 255));
+  _npRing.show();
+}
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return _npRing.Color((255 - WheelPos * 3)/5, 0, (WheelPos * 3)/5);
+  } else if(WheelPos < 170) {
+    WheelPos -= 85;
+    return _npRing.Color(0, (WheelPos * 3)/5, (255 - WheelPos * 3)/5);
+  } else {
+    WheelPos -= 170;
+    return _npRing.Color((WheelPos * 3)/5, (255 - WheelPos * 3)/5, 0);
+  }
+}
 
 // ---------------------------------
 // LOWER level Funcs
