@@ -73,6 +73,8 @@ int numRGBleds = 2;
 //-----------------------------------
 // Do the unrelated stuff here
 // --
+const uint16_t LED_LAMP = 0;
+const uint16_t LED_ENC = 1;
 
 
 // ---------------------------------
@@ -162,14 +164,15 @@ void loop () {
     Serial.println(_aRgbButton[_rgbButton]);
     switch(_aRgbButton[_rgbButton]){
         case 2: {
-          ShiftPWM.SetRGB(1, 255, 255, 255);
-          ShiftPWM.SetRGB(0, 255, 255, 255);
+          ShiftPWM.SetRGB(LED_ENC, 255, 255, 255);
+
+          int lampValueValue = constrain(255 + _rgbPosition, 0, 255);
+          ShiftPWM.SetHSV(LED_LAMP, 0, 0, lampValueValue);
         }
         break;
         case 4: {
-          ShiftPWM.SetRGB(1, 0, 255, 0);
+          ShiftPWM.SetRGB(LED_ENC, 0, 255, 0);
           clearLamp();
-          //neoColorWipe(_npRing.Color(0, 255, 0), 50); // Green
 
           if (nowMillis - _npPrevMillis >= 50) {
             _npPrevMillis = nowMillis;
@@ -180,8 +183,9 @@ void loop () {
         }
         break;
         case 8: {
-          ShiftPWM.SetRGB(1, 255, 0, 255);
-          ShiftPWM.SetRGB(0, 255, 255, 255);
+          ShiftPWM.SetRGB(LED_ENC, 255, 0, 255);
+          clearLamp();
+          clearNeoPixels();
         }
         break;
 
@@ -230,11 +234,11 @@ void clearMetal() {
     clear7Seg();
 }
 void clearRGB() {
-    ShiftPWM.SetRGB(1, 0, 0 ,0);
+    ShiftPWM.SetRGB(LED_ENC, 0, 0 ,0);
 }
 
 void clearLamp() {
-  ShiftPWM.SetRGB(0, 0, 0 ,0);
+  ShiftPWM.SetRGB(LED_LAMP, 0, 0 ,0);
 }
 
 void clearNeoPixels() {
@@ -394,7 +398,7 @@ void metalEncWakeup() {
 
 void rgbEncWakeup() {
   detachInterrupt(_rgbReIRQ);
-  
+
     if (digitalRead(_rgbReCLK) == digitalRead(_rgbReDT)) {
       _rgbPosition--;
     } else {
